@@ -10,8 +10,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MERMAID="$ROOT/tools/generate_mermaid.py"
-DRAWIO="$ROOT/tools/generate_drawio.py"
+MERMAID="$ROOT/tools_main/generate_mermaid.py"
+DRAWIO="$ROOT/tools_main/generate_drawio.py"
 DOCS="$ROOT/docs"
 mkdir -p "$DOCS"
 
