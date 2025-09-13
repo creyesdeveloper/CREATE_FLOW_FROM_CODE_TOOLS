@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail   # <- activa trazas (-x) y errores estrictos
 
-# === Config rápida por variables de entorno (puedes cambiarlas al vuelo) ===
-: "${INCLUDE_DB:=1}"        # 1 = dibuja nodos de DB y aristas SQL
-: "${LABEL_EDGES:=1}"       # 1 = etiqueta aristas con nombre/SQL (Mermaid)
-: "${HIDE_PRIVATE:=0}"      # 1 = oculta funciones que empiezan con "_"
-: "${COLS:=3}"              # columnas por swimlane en draw.io
+: "${INCLUDE_DB:=1}"
+: "${LABEL_EDGES:=1}"
+: "${HIDE_PRIVATE:=0}"
+: "${COLS:=0}"
+: "${LAYOUT:=sugi-lite}"
+: "${RANK_ORIGIN:=in}"
+: "${THEME:=midnight}"
+: "${ARROW:=block}"
+: "${EDGE_STYLE:=orthogonal}"
+: "${LINE_JUMPS:=on}"
+: "${SIZE_MODE:=degree}"
+: "${LEGEND:=on}"
+: "${GENERATE_MERMAID:=1}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -15,51 +23,67 @@ DRAWIO="$ROOT/tools_main/generate_drawio.py"
 DOCS="$ROOT/docs"
 mkdir -p "$DOCS"
 
-# === Lista de archivos a procesar ===
-# Si pasas archivos por argumento, usa esos. Si no, autodetecta los .py del proyecto (nivel raíz).
+TMP_DRAWIO="$DOCS/flow.drawio"   # <- nombre por defecto del script Python
+TMP_MMD="$DOCS/flow.mmd"
+
+drawio_flags=(
+  --layout "$LAYOUT" --rank-origin "$RANK_ORIGIN"
+  --theme "$THEME" --arrow "$ARROW" --edge-style "$EDGE_STYLE" --line-jumps "$LINE_JUMPS"
+  --size-mode "$SIZE_MODE" --legend "$LEGEND" --cols "$COLS"
+  --export drawio mermaid
+)
+mermaid_flags=()
+(( INCLUDE_DB ))   && { drawio_flags+=( --include_db );   mermaid_flags+=( --include_db ); }
+(( LABEL_EDGES ))  && { drawio_flags+=( --label_edges );  mermaid_flags+=( --label_edges ); }
+(( HIDE_PRIVATE )) && { drawio_flags+=( --hide_private ); mermaid_flags+=( --hide_private ); }
+
 FILES=()
 if (( $# > 0 )); then
   FILES=("$@")
 else
-  # Prioriza los módulos típicos de tu app; si no existen, cae a todos los .py del raíz.
-  CANDIDATES=( login.py carrito.py historial.py pdf_pedido.py resumen_cliente.py tomar_pedido.py )
-  for f in "${CANDIDATES[@]}"; do [[ -f "$f" ]] && FILES+=("$f"); done
-
-  if (( ${#FILES[@]} == 0 )); then
-    # Autodetección segura: raíz solamente, excluye herramientas/generadores y ocultos.
-    while IFS= read -r f; do
-      base="$(basename "$f")"
-      [[ "$base" == generate_* ]] && continue
-      [[ "$base" == analyze_sql.py ]] && continue
-      [[ "$base" == _* ]] && continue
-      FILES+=("$base")
-    done < <(find "$ROOT" -maxdepth 1 -type f -name '*.py' | sort)
-  fi
+  while IFS= read -r f; do
+    base="$(basename "$f")"
+    [[ "$base" == generate_* ]] && continue
+    [[ "$base" == analyze_sql.py ]] && continue
+    [[ "$base" == _* ]] && continue
+    FILES+=("$base")
+  done < <(find "$ROOT" -maxdepth 1 -type f -name '*.py' | sort)
 fi
 
-# === Flags comunes construidos desde las variables ===
-mermaid_flags=()
-drawio_flags=( "--cols" "$COLS" )
-
-(( INCLUDE_DB ))   && { mermaid_flags+=( "--include_db" ); drawio_flags+=( "--include_db" ); }
-(( LABEL_EDGES ))  && { mermaid_flags+=( "--label_edges" ); drawio_flags+=( "--label_edges" ); }
-(( HIDE_PRIVATE )) && { mermaid_flags+=( "--hide_private" ); drawio_flags+=( "--hide_private" ); }
-
 echo "== Generando flujos para ${#FILES[@]} archivo(s) =="
+
 for f in "${FILES[@]}"; do
   base="${f##*/}"; base="${base%.py}"
   echo "→ $f"
 
-  # 1) Mermaid enriquecido por archivo
-  python3 "$MERMAID" --files "$f" \
-    "${mermaid_flags[@]}" \
-    --outfile "$DOCS/flow_${base}.md"
+  # Limpia temporales para evitar confusiones
+  rm -f "$TMP_DRAWIO" "$TMP_MMD"
 
-  # 2) Draw.io (swimlanes, imports/DB/eventos) por archivo
-  python3 "$DRAWIO" --files "$f" \
-    "${drawio_flags[@]}" \
-    --outfile "$DOCS/flow_${base}.drawio"
+  # 1) Mermaid por archivo (opcional)
+  if (( GENERATE_MERMAID )); then
+    python3 "$MERMAID" --files "$f" "${mermaid_flags[@]}" --outfile "$DOCS/flow_${base}.md"
+    echo "   OK mermaid  ➜ $DOCS/flow_${base}.md"
+  fi
+
+  # 2) Draw.io: forzamos a que el script escriba su default y luego renombramos
+  python3 "$DRAWIO" --files "$f" --no_recurse "${drawio_flags[@]}" --outfile "$TMP_DRAWIO" || true
+
+  # Fallbacks: algunos builds ignoran --outfile y/o sólo crean drawio
+  if [[ -f "$TMP_DRAWIO" ]]; then
+    mv -f "$TMP_DRAWIO" "$DOCS/flow_${base}.drawio"
+    echo "   OK draw.io  ➜ $DOCS/flow_${base}.drawio"
+  elif [[ -f "$DOCS/flow.drawio" ]]; then
+    mv -f "$DOCS/flow.drawio" "$DOCS/flow_${base}.drawio"
+    echo "   OK draw.io  ➜ $DOCS/flow_${base}.drawio"
+  else
+    echo "   ⚠️  No se generó draw.io para $f (revisa la traza arriba)."
+    exit 1
+  fi
+
+  # Si también quieres separar el .mmd del drawio.py, renómbralo si aparece
+  if [[ -f "$TMP_MMD" ]]; then
+    mv -f "$TMP_MMD" "$DOCS/flow_${base}.mmd"
+  fi
 done
 
 echo "OK ✅  Archivos en: $DOCS"
-echo "Sugerencia: abre con draw.io el que quieras (p. ej. $DOCS/flow_historial.drawio) y ajusta layout."
