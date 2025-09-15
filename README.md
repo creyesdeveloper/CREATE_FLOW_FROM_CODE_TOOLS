@@ -11,22 +11,19 @@ Genera **diagramas de flujo** (Draw.io + Mermaid) a partir de código **Python**
 
 ## 📑 Índice
 
-- [🧭 CREATE\_FLOW\_FROM\_CODE\_TOOLS](#-create_flow_from_code_tools)
+- [🧭 CREATE_FLOW_FROM_CODE_TOOLS](#-create_flow_from_code_tools)
   - [📑 Índice](#-índice)
   - [🚀 Objetivo](#-objetivo)
   - [🧩 Componentes principales](#-componentes-principales)
   - [⚙️ Requisitos](#️-requisitos)
   - [🏁 Puesta en marcha](#-puesta-en-marcha)
-- [1) Clonar](#1-clonar)
-- [2) Crear y activar venv](#2-crear-y-activar-venv)
-- [3) Actualizar pip y dependencias](#3-actualizar-pip-y-dependencias)
-- [4) (una vez) dar permisos al .sh](#4-una-vez-dar-permisos-al-sh)
   - [🛠️ Uso de las herramientas](#️-uso-de-las-herramientas)
-  - [analyze\_sql.py](#analyze_sqlpy)
+  - [📊 analyze_sql.py](#-analyze_sqlpy)
   - [📂 Estructura del proyecto](#-estructura-del-proyecto)
   - [📄 Salidas en docs/](#-salidas-en-docs)
   - [🧰 Tips VSCode](#-tips-vscode)
-  - [Troubleshootin🧯 Troubleshooting](#troubleshootin-troubleshooting)
+  - [🧯 Troubleshooting](#-troubleshooting)
+  - [👨‍💻 Autor](#-autor)
 
 ---
 
@@ -60,140 +57,144 @@ Genera **diagramas de flujo** (Draw.io + Mermaid) a partir de código **Python**
 
 ## 🏁 Puesta en marcha
 
+### 1) Clonar
 ```bash
-# 1) Clonar
+git clone https://github.com/creyesdeveloper/CREATE_FLOW_FROM_CODE_TOOLS.git
+cd CREATE_FLOW_FROM_CODE_TOOLS
+```
 
-    git clone https://github.com/creyesdeveloper/CREATE_FLOW_FROM_CODE_TOOLS.git
-    cd CREATE_FLOW_FROM_CODE_TOOLS
+### 2) Crear y activar venv
+```bash
+python3.13 -m venv .venv
+source .venv/bin/activate          # macOS/Linux
+# .venv\Scripts\activate         # Windows (PowerShell: .venv\Scripts\Activate.ps1)
+```
 
-# 2) Crear y activar venv
+### 3) Actualizar pip y dependencias
+```bash
+pip install -U pip setuptools wheel
+# Si se usa requirements:
+# pip install -r requirements.txt
+```
 
-    python3.13 -m venv .venv
-    source .venv/bin/activate          # macOS/Linux
-    # .venv\Scripts\activate           # Windows (PowerShell: .venv\Scripts\Activate.ps1)
+### 4) (una vez) dar permisos al .sh
+```bash
+chmod +x tools_main/gen_all_flows.sh
+```
 
-# 3) Actualizar pip y dependencias
-
-    pip install -U pip setuptools wheel
-    # Si se usa requirements:
-    # pip install -r requirements.txt
-
-# 4) (una vez) dar permisos al .sh
-
-    chmod +x tools_main/gen_all_flows.sh
+---
 
 ## 🛠️ Uso de las herramientas
 
-generate_drawio.py / generate_mermaid.py (vía script .sh)
+**generate_drawio.py / generate_mermaid.py** (vía script `.sh`)  
 
-Desde la raíz del repo con el .venv activo:
+Desde la raíz del repo con el `.venv` activo:
 
-    # Generar diagramas para UN archivo
-    ./tools_main/gen_all_flows.sh carrito.py
+```bash
+# Generar diagramas para UN archivo
+./tools_main/gen_all_flows.sh carrito.py
 
-    # Generar diagramas para varios
-    ./tools_main/gen_all_flows.sh carrito.py historial.py tomar_pedido.py
+# Generar diagramas para varios
+./tools_main/gen_all_flows.sh carrito.py historial.py tomar_pedido.py
 
-    # Generar para todos los .py en la raíz
-    ./tools_main/gen_all_flows.sh
+# Generar para todos los .py en la raíz
+./tools_main/gen_all_flows.sh
+```
 
 Variables de entorno (opcional) — defaults actuales:
+```bash
+INCLUDE_DB=1 LABEL_EDGES=1 HIDE_PRIVATE=0 COLS=0 LAYOUT=sugi-lite RANK_ORIGIN=in THEME=midnight ARROW=block EDGE_STYLE=orthogonal LINE_JUMPS=on SIZE_MODE=degree LEGEND=on GENERATE_MERMAID=1 ./tools_main/gen_all_flows.sh carrito.py
+```
 
-    INCLUDE_DB=1 LABEL_EDGES=1 HIDE_PRIVATE=0 COLS=0 \
-    LAYOUT=sugi-lite RANK_ORIGIN=in THEME=midnight \
-    ARROW=block EDGE_STYLE=orthogonal LINE_JUMPS=on \
-    SIZE_MODE=degree LEGEND=on GENERATE_MERMAID=1 \
-    ./tools_main/gen_all_flows.sh carrito.py
+**Salida esperada por cada archivo `X.py`:**
+- `docs/flow_X.drawio`
+- `docs/flow_X.md` (Mermaid)
 
-Salida esperada por cada archivo X.py:
+El `.sh` maneja fallbacks de `--outfile` y limpia temporales para evitar confusiones.
 
-    docs/flow_X.drawio
+---
 
-    docs/flow_X.md (Mermaid)
+## 📊 analyze_sql.py
 
-El .sh maneja fallbacks de --outfile y limpia temporales para evitar confusiones
+```bash
+# Un archivo
+python3 tools_main/analyze_sql.py --files carrito.py
 
-## analyze_sql.py
+# Varios archivos
+python3 tools_main/analyze_sql.py --files carrito.py historial.py tomar_pedido.py
 
-    # Un archivo
-    python3 tools_main/analyze_sql.py --files carrito.py
+# Comodín del shell (todos los .py de la carpeta actual)
+python3 tools_main/analyze_sql.py --files *.py
 
-    # Varios archivos
-    python3 tools_main/analyze_sql.py --files carrito.py historial.py tomar_pedido.py
+# Directorio(s) (recursivo por defecto)
+python3 tools_main/analyze_sql.py --paths .
 
-    # Comodín del shell (todos los .py de la carpeta actual)
-    python3 tools_main/analyze_sql.py --files *.py
+# Sin recursión
+python3 tools_main/analyze_sql.py --paths tools_main --no_recurse
 
-    # Directorio(s) (recursivo por defecto)
-    python3 tools_main/analyze_sql.py --paths .
+# Cambiar el archivo de salida
+python3 tools_main/analyze_sql.py --files carrito.py --outfile docs/sql_insights.md
+```
 
-    # Sin recursión
-    python3 tools_main/analyze_sql.py --paths tools_main --no_recurse
+**Salida**: `docs/sql_insights.md`  
+- Índice clicable  
+- Secciones por Archivo: `"nombre.py"`  
+- Entradas ordenadas por línea, sin duplicados (línea, SQL)  
+- Detalles: tipo (SELECT/INSERT/UPDATE/DELETE), tablas, campos, WHERE, ORDER BY, LIMIT  
 
-    # Cambiar el archivo de salida
-    python3 tools_main/analyze_sql.py --files carrito.py --outfile docs/sql_insights.md
-
-Salida: docs/sql_insights.md
-
-
-    - Índice clicable
-
-    - Secciones por Archivo: "nombre.py"
-
-    - Entradas ordenadas por línea, sin duplicados (línea, SQL)
-
-    - Detalles: tipo (SELECT/INSERT/UPDATE/DELETE), tablas, campos, WHERE, ORDER BY, LIMIT
+---
 
 ## 📂 Estructura del proyecto
 
-    CREATE_FLOW_FROM_CODE_TOOLS/
-    ├─ tools_main/
-    │  ├─ generate_drawio.py
-    │  ├─ generate_mermaid.py
-    │  ├─ analyze_sql.py
-    │  └─ gen_all_flows.sh
-    ├─ docs/
-    │  ├─ flow_*.drawio
-    │  ├─ flow_*.md
-    │  └─ sql_insights.md
-    ├─ carrito.py
-    ├─ historial.py
-    ├─ tomar_pedido.py
-    └─ .venv/ (no versionado)
+```
+CREATE_FLOW_FROM_CODE_TOOLS/
+├─ tools_main/
+│  ├─ generate_drawio.py
+│  ├─ generate_mermaid.py
+│  ├─ analyze_sql.py
+│  └─ gen_all_flows.sh
+├─ docs/
+│  ├─ flow_*.drawio
+│  ├─ flow_*.md
+│  └─ sql_insights.md
+├─ carrito.py
+├─ historial.py
+├─ tomar_pedido.py
+└─ .venv/ (no versionado)
+```
+
+---
 
 ## 📄 Salidas en docs/
 
-    Diagramas: flow_<archivo>.drawio y flow_<archivo>.md (Mermaid)
+- Diagramas: `flow_<archivo>.drawio` y `flow_<archivo>.md` (Mermaid)  
+- SQL: `sql_insights.md` con índice y secciones por archivo  
 
-    SQL: sql_insights.md con índice y secciones por archivo
+---
 
 ## 🧰 Tips VSCode
 
-        - Seleccionar intérprete: Cmd+Shift+P → Python: Select Interpreter → ./.venv/bin/python
+- Seleccionar intérprete: `Cmd+Shift+P → Python: Select Interpreter → ./.venv/bin/python`
+- Reiniciar servidor de análisis: `Cmd+Shift+P → Python: Restart Language Server`
+- Preview Markdown:
+  - Lateral: `⇧⌘V`
+  - Mismo editor: `⌘K` luego `V`
 
-        - Reiniciar servidor de análisis: Cmd+Shift+P → Python: Restart Language Server
+---
 
-        - Preview Markdown:
+## 🧯 Troubleshooting
 
-            Lateral: ⇧⌘V
-
-            Mismo editor: ⌘K luego V
-
-
-## Troubleshootin🧯 Troubleshooting
-
-- No se activó el venv: confirma which python apunta a .../.venv/bin/python.
-
-- “command not found” con el .sh: asegúrate de estar en la raíz y haber corrido chmod +x.
-
-- No aparece flow_<archivo>.drawio: revisa la traza del .sh; puede quedar temporal en docs/flow.drawio (el script lo mueve).
-
+- No se activó el venv: confirma `which python` apunta a `.../.venv/bin/python`.
+- “command not found” con el `.sh`: asegúrate de estar en la raíz y haber corrido `chmod +x`.
+- No aparece `flow_<archivo>.drawio`: revisa la traza del `.sh`; puede quedar temporal en `docs/flow.drawio` (el script lo mueve).
 - El shell intenta “ejecutar” nombres de archivo: pon todos los nombres en una sola línea:
 
-    python3 tools_main/analyze_sql.py --files carrito.py historial.py tomar_pedido.py
+```bash
+python3 tools_main/analyze_sql.py --files carrito.py historial.py tomar_pedido.py
+```
 
-##👨‍💻 Autor
+---
+
+## 👨‍💻 Autor
 
 Carlos Reyes Bustamante — asistido por ChatGPT
-
-
