@@ -17,6 +17,8 @@ Uso típico (desde la raíz del repo):
     --edge-style orthogonal --line-jumps on --size-mode degree --legend on \
     --cols 0 --export drawio mermaid --outfile docs/flow.drawio
 """
+
+
 from __future__ import annotations
 from collections import defaultdict
 
@@ -24,6 +26,10 @@ from collections import defaultdict
 import argparse, ast, html, math, pathlib, re, time
 from collections import defaultdict, deque
 from typing import Dict, Iterable, List, Optional, Set, Tuple
+
+from collections.abc import Sequence
+import ast
+from typing import Optional
 
 # ---------------- Paths base ----------------
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -35,12 +41,7 @@ IGNORE_DIRS = {
 }
 
 # ---------------- Detección SQL/DB ----------------
-SQL_RE = re.compile(
-    r"(?is)\b("
-    r"SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA|BEGIN|COMMIT|ROLLBACK"
-    r")\b"
-)
-
+SQL_RE = re.compile(r"(?is)\b(SELECT|INSERT|UPDATE|DELETE)\b")
 DB_NAME_RE = re.compile(r'(?i)([A-Za-z0-9_\-./]+?\.(?:db|sqlite3?|sqlite))')
 
 # ---------------- Estilos draw.io ----------------
@@ -184,7 +185,7 @@ class V(ast.NodeVisitor):
         self.generic_visit(n)
         self.stack.pop()
 
-    def visit_AsyncFunctionDef(self, n: ast.AsyncFunctionDef): self.visit_FunctionDef(n)
+    def visit_AsyncFunctionDef(self, n: ast.AsyncFunctionDef): self.visit_FunctionDef(n) # type: ignore
 
     def _resolve_call(self, node: ast.AST) -> Tuple[str,str]:
         if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
@@ -220,7 +221,7 @@ class V(ast.NodeVisitor):
 
     def _event_kwargs(self, caller: str, kwargs: List[ast.keyword]):
         for kw in kwargs:
-            if not kw.arg or not kw.arg.startswith("on_"): 
+            if not kw.arg or not kw.arg.startswith("on_"):
                 continue
             tgt_mod, tgt_fn = None, None
             if isinstance(kw.value, ast.Attribute) and isinstance(kw.value.value, ast.Name):
@@ -270,7 +271,7 @@ class V(ast.NodeVisitor):
                         self.databases.add(self.cdb[a.id])
 
         # etiqueta SQL (constante, f-string o nombre)
-        sql_label = self._label_from_args(list(node.args) + [kw.value for kw in node.keywords])
+        sql_label = self._label_from_args(list(node.args) + [kw.value for kw in node.keywords]) # type: ignore
 
         # Si llama a execute/executemany/executescript sin etiqueta, usa "SQL"
         if cf in {"execute", "executemany", "executescript"} and not sql_label:
@@ -306,7 +307,7 @@ class V(ast.NodeVisitor):
                     if a.id in self.cdb: self.databases.add(self.cdb[a.id])
 
         # etiqueta SQL (constante, f-string o nombre de var)
-        sql_label = self._label_from_args(list(node.args) + [kw.value for kw in node.keywords])
+        sql_label = self._label_from_args(list(node.args) + [kw.value for kw in node.keywords]) # type: ignore
 
         # Si llama a execute/executemany/executescript y aún no hay etiqueta, usa "SQL"
         if cf in {"execute", "executemany", "executescript"} and not sql_label:
